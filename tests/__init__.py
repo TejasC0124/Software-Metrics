@@ -1,0 +1,1 @@
+"""SPBE automated tests."""

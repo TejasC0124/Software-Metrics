@@ -1,0 +1,32 @@
+{
+  "profiles": {
+    "final_review_demo": {
+      "attempts": 1,
+      "bridges": {
+        "semantic_phonetic": {
+          "strength": 0.5,
+          "observations": 1,
+          "weak_events": 1
+        },
+        "phonetic_visual": {
+          "strength": 0.7083,
+          "observations": 1,
+          "weak_events": 0
+        },
+        "semantic_visual": {
+          "strength": 0.5416,
+          "observations": 1,
+          "weak_events": 0
+        }
+      },
+      "recent_attempts": [
+        {
+          "target": "said",
+          "response": "side",
+          "weak_mapping": "semantic_phonetic",
+          "recorded_at": "2026-09-10T03:30:50.094189+00:00"
+        }
+      ]
+    }
+  }
+}
