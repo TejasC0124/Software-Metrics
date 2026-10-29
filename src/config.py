@@ -12,7 +12,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 MODELS_DIR = PROJECT_ROOT / "models"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 
-# Semantic model
+# Semantic embedding model (used only when embeddings are requested)
 SEMANTIC_MODEL_NAME = "all-MiniLM-L6-v2"
 
 # Supported modalities

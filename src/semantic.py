@@ -1,25 +1,43 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from nltk.corpus import wordnet as wn
-from sentence_transformers import SentenceTransformer
+
+from src.config import SEMANTIC_MODEL_NAME
+
+if TYPE_CHECKING:  # pragma: no cover - imported lazily at runtime
+    from sentence_transformers import SentenceTransformer
+
+WORDNET_SETUP_MESSAGE = (
+    "WordNet data is missing. Run `python setup_resources.py` once "
+    "(or `python -m nltk.downloader wordnet`), then try again."
+)
 
 
 class SemanticEngine:
     """Create lexical-semantic representations and optional embeddings.
 
-    Embedding loading is lazy so the text-response prototype can run without
-    downloading a transformer model during a review demonstration.
+    The lexical baseline uses WordNet, which must be installed locally (see
+    setup_resources.py). The sentence-transformer model is imported and
+    downloaded only when embeddings are requested, so the text-response
+    prototype runs without loading PyTorch.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = SEMANTIC_MODEL_NAME):
         self.model_name = model_name
         self.model: SentenceTransformer | None = None
 
     def get_synsets(self, word: str) -> list[object]:
+        """Return WordNet synsets for a word, or [] if it is not in WordNet.
+
+        Raises RuntimeError when the WordNet data itself is not installed, so
+        the semantic bridge never silently scores every word as 0.
+        """
         try:
-            return wn.synsets(str(word).lower())
-        except LookupError:
-            return []
+            return wn.synsets(str(word).strip().lower())
+        except LookupError as error:
+            raise RuntimeError(WORDNET_SETUP_MESSAGE) from error
 
     def get_semantic_information(self, word: str) -> dict[str, object]:
         synsets = self.get_synsets(word)
@@ -44,6 +62,8 @@ class SemanticEngine:
 
     def _load_embedding_model(self) -> SentenceTransformer:
         if self.model is None:
+            from sentence_transformers import SentenceTransformer
+
             self.model = SentenceTransformer(self.model_name)
         return self.model
 
@@ -56,8 +76,10 @@ class SemanticEngine:
     def semantic_similarity(self, target: str, response: str) -> float:
         """Return a WordNet lexical-semantic baseline in the range 0 to 1.
 
-        It returns 0 for unrelated or unknown words. A trained sentence-
-        embedding comparison remains a future enhancement.
+        Returns 1.0 for identical words and 0.0 for unrelated or unknown words.
+        Words missing from WordNet (for example most misspellings) therefore
+        score 0.0, so this baseline is only meaningful for real words. A
+        trained sentence-embedding comparison remains future work.
         """
         target = str(target).strip().lower()
         response = str(response).strip().lower()

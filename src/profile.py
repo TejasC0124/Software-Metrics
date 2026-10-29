@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,9 @@ class LearnerProfileStore:
 
     def __init__(self, profile_file: str | Path):
         self.profile_file = Path(profile_file)
+        # The web app handles requests on several threads, and each attempt
+        # rewrites the whole JSON file, so writes must be serialised.
+        self._lock = threading.Lock()
 
     def _load_all(self) -> dict[str, Any]:
         if not self.profile_file.exists():
@@ -40,7 +44,10 @@ class LearnerProfileStore:
         learner_id = str(learner_id).strip()
         if not learner_id:
             raise ValueError("learner_id must not be empty")
+        with self._lock:
+            return self._record_attempt(learner_id, analysis)
 
+    def _record_attempt(self, learner_id: str, analysis: dict[str, Any]) -> dict[str, Any]:
         all_profiles = self._load_all()
         profiles = all_profiles["profiles"]
         profile = profiles.setdefault(

@@ -1,28 +1,42 @@
-import sys
-from pathlib import Path
+import unittest
+from unittest import mock
 
-# Allow Python to find the src directory
-sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
-
-from semantic import SemanticEngine
+from src.semantic import SemanticEngine, WORDNET_SETUP_MESSAGE
 
 
-def main():
-    engine = SemanticEngine()
+class SemanticEngineTestCase(unittest.TestCase):
+    def setUp(self):
+        self.engine = SemanticEngine()
 
-    word = "said"
+    def test_identical_words_score_one(self):
+        self.assertEqual(self.engine.semantic_similarity("said", "said"), 1.0)
 
-    result = engine.process_word(word)
+    def test_related_forms_share_meaning(self):
+        # "say" is the base form of "said" and shares a WordNet synset with it.
+        self.assertEqual(self.engine.semantic_similarity("said", "say"), 1.0)
 
-    print("Word:", result["word"])
-    print("Number of synsets:", len(result["synsets"]))
-    print("Definitions:")
+    def test_unknown_word_scores_zero(self):
+        self.assertEqual(self.engine.semantic_similarity("said", "qzxvw"), 0.0)
 
-    for definition in result["definitions"]:
-        print("-", definition)
+    def test_process_word_without_embedding_returns_definitions(self):
+        result = self.engine.process_word("said")
+        self.assertTrue(result["definitions"])
+        self.assertIsNone(result["embedding"])
 
-    print("\nEmbedding shape:", result["embedding"].shape)
+    def test_embedding_uses_loaded_model(self):
+        fake_model = mock.Mock()
+        fake_model.encode.return_value = [0.1, 0.2, 0.3]
+        with mock.patch.object(SemanticEngine, "_load_embedding_model", return_value=fake_model):
+            result = self.engine.process_word("said", include_embedding=True)
+        self.assertEqual(result["embedding"], [0.1, 0.2, 0.3])
+        fake_model.encode.assert_called_once()
+
+    def test_missing_wordnet_raises_clear_error(self):
+        with mock.patch("src.semantic.wn.synsets", side_effect=LookupError("missing")):
+            with self.assertRaises(RuntimeError) as context:
+                self.engine.semantic_similarity("said", "side")
+        self.assertEqual(str(context.exception), WORDNET_SETUP_MESSAGE)
 
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
